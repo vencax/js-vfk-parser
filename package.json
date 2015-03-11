@@ -1,0 +1,24 @@
+{
+  "name": "vfk-parser",
+  "version": "0.0.2",
+  "description": "Streamlined parser of VFK (czech GIS interchange fmt) files",
+  "main": "index.js",
+  "engines": {
+    "node": ">=0.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vencax/js-vfk-parser"
+  },
+  "dependencies": {
+
+  },
+  "devDependencies": {
+
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "author": "Vaclav Klecanda",
+  "license": "MIT"
+}
