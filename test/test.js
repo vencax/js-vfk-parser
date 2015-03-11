@@ -16,6 +16,6 @@ parser.on('header', function(header) {
   console.log(header);
 });
 
-var source = fs.createReadStream(process.argv[2]);
+var source = fs.createReadStream(__dirname + '/h.vfk');
 
 source.pipe(parser);
