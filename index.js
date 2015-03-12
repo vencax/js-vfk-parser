@@ -1,5 +1,6 @@
 
 var util = require('util');
+var moment = require('moment');
 var Writable = require('stream').Writable;
 util.inherits(VFKParser, Writable);
 
@@ -8,10 +9,15 @@ function VFKParser(options) {
   Writable.call(this, options);
   this._inHead = true;
   this._line = [];
-  this._lineNum = 0;
+  this.lineNum = 0;
   this._type = 0;
   this._head = [];
   this._curr_block_info = null;
+  this._chidx = null;
+  this._chunk = null;
+  this._enc = null;
+  this._paused = false;
+  this._done = null;
 }
 module.exports = VFKParser;
 
@@ -32,7 +38,7 @@ VFKParser.prototype._create_block_info = function() {
 VFKParser.prototype._create_item = function() {
   var parts = Buffer(this._line).toString().split(';');
   if(this._curr_block_info.name !== parts.shift()) {
-    console.log('WARN: partname not match headers, line: ' + this._lineNum);
+    console.log('WARN: partname not match headers, line: ' + this.lineNum);
   }
 
   var h, val;
@@ -49,7 +55,7 @@ VFKParser.prototype._create_item = function() {
       item.push(val);
       break;
     case 'D':
-      item.push(new Date(val));
+      item.push(moment(val, "DD.MM.YYYY HH:mm:ss").toDate());
       break;
     case 'N':
       if(h[1].indexOf('.') > 0) {    // float
@@ -88,32 +94,55 @@ VFKParser.prototype._on_lineread = function() {
     // we are @ da end, yay!
     break;
   }
+  this.lineNum++;
+  this._line = [];
 }
 
-VFKParser.prototype._write = function (chunk, enc, done) {
-  var i = 0;
-
-  while(i < chunk.length) {
-    if(chunk[i] === 13) {  // lines ends with CRLF
-      i++;
-      if(chunk[i] === 10) {
-        if(chunk[i-2] === '¤'.charCodeAt(0)) { // data containing newline
+VFKParser.prototype._myparse = function () {
+  while(this._chidx < this._chunk.length) {
+    if(this._chunk[this._chidx] === 13) {  // lines ends with CRLF
+      this._chidx++;
+      if(this._chunk[this._chidx] === 10) {
+        if(this._chunk[this._chidx-2] === '¤'.charCodeAt(0)) {
+          // data containing newline
           this._line.push('\n'.charCodeAt(0));
         } else {
           this._on_lineread();
-          this._lineNum++;
-          this._line = [];
+          if(this._paused) {
+            this._chidx += 1; // skip the NL char
+            return;
+          }
         }
       }
-    } else if(chunk[i] === '&'.charCodeAt(0)) {
-      i+=1; // skip the &
-      this._type = String.fromCharCode(chunk[i]);
-    } else if(chunk[i] === '¤'.charCodeAt(0)) {
+    } else if(this._chunk[this._chidx] === '&'.charCodeAt(0)) {
+      this._chidx += 1; // skip the &
+      this._type = String.fromCharCode(this._chunk[this._chidx]);
+    } else if(this._chunk[this._chidx] === '¤'.charCodeAt(0)) {
       // skip
     } else {
-      this._line.push(chunk[i]);
+      this._line.push(this._chunk[this._chidx]);
     }
-    i++;
+    this._chidx++;
   }
-  done();
+  this._done();
+};
+
+VFKParser.prototype._write = function (chunk, enc, done) {
+  this._chidx = 0;
+  this._chunk = chunk;
+  this._enc = enc;
+  this._done = done;
+
+  this._myparse();
+};
+
+VFKParser.prototype.pause = function() {
+  this._paused = true;
+};
+
+VFKParser.prototype.resume = function() {
+  if(this._paused) {
+    this._paused = false;
+    this._myparse();  // continue
+  }
 };

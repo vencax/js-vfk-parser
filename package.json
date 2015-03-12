@@ -11,11 +11,9 @@
     "url": "https://github.com/vencax/js-vfk-parser"
   },
   "dependencies": {
-
+    "moment": "^2.9.0"
   },
-  "devDependencies": {
-
-  },
+  "devDependencies": {},
   "scripts": {
     "test": "node test/test.js"
   },
